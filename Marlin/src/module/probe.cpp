@@ -585,6 +585,11 @@ bool Probe::probe_down_to_z(const_float_t z, const_feedRate_t fr_mm_s) {
  *
  * @return The Z position of the bed at the current XY or NAN on error.
  */
+
+#ifndef CNC_TOOL_HEIGHT
+  #define CNC_TOOL_HEIGHT 0
+#endif
+
 float Probe::run_z_probe(const bool sanity_check/*=true*/) {
   DEBUG_SECTION(log_probe, "Probe::run_z_probe", DEBUGGING(LEVELING));
 
@@ -594,7 +599,7 @@ float Probe::run_z_probe(const bool sanity_check/*=true*/) {
 
     // Do a first probe at the fast speed
     const bool probe_fail = probe_down_to_z(z_probe_low_point, fr_mm_s),            // No probe trigger?
-               early_fail = (scheck && current_position.z > -offset.z + clearance); // Probe triggered too high?
+               early_fail = (scheck && current_position.z > -offset.z + clearance + CNC_TOOL_HEIGHT); // Probe triggered too high?
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING) && (probe_fail || early_fail)) {
         DEBUG_ECHOPGM_P(plbl);

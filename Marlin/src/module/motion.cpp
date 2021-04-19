@@ -387,6 +387,7 @@ void _internal_move_to_destination(const_feedRate_t fr_mm_s/*=0.0f*/
 void do_blocking_move_to(const float rx, const float ry, const float rz, const_feedRate_t fr_mm_s/*=0.0*/) {
   DEBUG_SECTION(log_move, "do_blocking_move_to", DEBUGGING(LEVELING));
   if (DEBUGGING(LEVELING)) DEBUG_XYZ("> ", rx, ry, rz);
+
   const feedRate_t z_feedrate = fr_mm_s ?: homing_feedrate(Z_AXIS),
                   xy_feedrate = fr_mm_s ?: feedRate_t(XY_PROBE_FEEDRATE_MM_S);
 
@@ -832,7 +833,6 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
       // If the move is only in Z/E don't split up the move
       if (!diff.x && !diff.y) {
         planner.buffer_line(destination, fr_mm_s, active_extruder);
-        DEBUG_ECHOLNPAIR("$$$ X&Y=0 : ", (const float)fr_mm_s);
         return;
       }
 
@@ -841,21 +841,18 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
       // No E move either? Game over.
       float cartesian_mm = diff.magnitude();
       if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = ABS(diff.e);
-      if (UNEAR_ZERO(cartesian_mm)) 
-      {
-        DEBUG_ECHOLNPAIR("$$$ X+Y near zero : ", (float)cartesian_mm);
-        return;
-      }
+      if (UNEAR_ZERO(cartesian_mm)) return;
+
       // The length divided by the segment size
       // At least one segment is required
       uint16_t segments = cartesian_mm / segment_size;
       NOLESS(segments, 1U);
-      DEBUG_ECHOLNPAIR("$$$ Segments : ", (float)segments);
+
       // The approximate length of each segment
       const float inv_segments = 1.0f / float(segments),
                   cartesian_segment_mm = cartesian_mm * inv_segments;
       const xyze_float_t segment_distance = diff * inv_segments;
-      DEBUG_ECHOLNPAIR("$$$ Approx. Seg Len : ", (float)cartesian_segment_mm);
+
       #if ENABLED(SCARA_FEEDRATE_SCALING)
         const float inv_duration = scaled_fr_mm_s / cartesian_segment_mm;
       #endif
@@ -872,7 +869,6 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
       while (--segments) {
         segment_idle(next_idle_ms);
         raw += segment_distance;
-        DEBUG_ECHOLNPAIR("$$$ Draw Seg bit FR : ", (const float)fr_mm_s);
         if (!planner.buffer_line(raw, fr_mm_s, active_extruder, cartesian_segment_mm
           #if ENABLED(SCARA_FEEDRATE_SCALING)
             , inv_duration
@@ -882,8 +878,6 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
 
       // Since segment_distance is only approximate,
       // the final move must be to the exact destination.
-      //DEBUG_ECHOPGM("$$$ Last Seg bit FR : ", fr_mm_s);
-      DEBUG_ECHOLNPAIR("$$$ Last Seg bit FR : ", (const float)fr_mm_s);
       planner.buffer_line(destination, fr_mm_s, active_extruder, cartesian_segment_mm
         #if ENABLED(SCARA_FEEDRATE_SCALING)
           , inv_duration
